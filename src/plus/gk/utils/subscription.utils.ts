@@ -28,59 +28,8 @@ export function compareSubscriptionPlans(
 	return getSubscriptionPlanOrder(planA) - getSubscriptionPlanOrder(planB);
 }
 
-export function computeSubscriptionState(subscription: Optional<Subscription, 'state'>): SubscriptionState {
-	const {
-		account,
-		plan: { actual, effective },
-	} = subscription;
-
-	if (account?.verified === false) return SubscriptionState.VerificationRequired;
-
-	if (actual.id === effective.id || compareSubscriptionPlans(actual.id, effective.id) > 0) {
-		switch (actual.id === effective.id ? effective.id : actual.id) {
-			case 'community':
-				return SubscriptionState.Community;
-
-			case 'community-with-account': {
-				if (effective.nextTrialOptInDate != null && new Date(effective.nextTrialOptInDate) < new Date()) {
-					return SubscriptionState.TrialReactivationEligible;
-				}
-
-				return SubscriptionState.TrialExpired;
-			}
-			case 'student':
-			case 'pro':
-			case 'advanced':
-			case 'teams':
-			case 'enterprise':
-				return SubscriptionState.Paid;
-		}
-	}
-
-	// If you have a paid license, any trial license higher tier than your paid license is considered paid
-	if (compareSubscriptionPlans(actual.id, 'community-with-account') > 0) {
-		return SubscriptionState.Paid;
-	}
-
-	switch (effective.id) {
-		case 'community':
-			return SubscriptionState.Community;
-
-		case 'community-with-account': {
-			if (effective.nextTrialOptInDate != null && new Date(effective.nextTrialOptInDate) < new Date()) {
-				return SubscriptionState.TrialReactivationEligible;
-			}
-
-			return SubscriptionState.TrialExpired;
-		}
-
-		case 'student':
-		case 'pro':
-		case 'advanced':
-		case 'teams':
-		case 'enterprise':
-			return SubscriptionState.Trial;
-	}
+export function computeSubscriptionState(_subscription: Optional<Subscription, 'state'>): SubscriptionState {
+	return SubscriptionState.Paid;
 }
 
 export function getSubscriptionNextPaidPlanId(subscription: Optional<Subscription, 'state'>): PaidSubscriptionPlanIds {
@@ -218,12 +167,12 @@ export function getSubscriptionTimeRemaining(
 	return getTimeRemaining(subscription.plan.effective.expiresOn, unit);
 }
 
-export function isSubscriptionPaid(subscription: Optional<Subscription, 'state'>): boolean {
-	return isSubscriptionPaidPlan(subscription.plan.actual.id);
+export function isSubscriptionPaid(_subscription: Optional<Subscription, 'state'>): boolean {
+	return true;
 }
 
-export function isSubscriptionPaidPlan(id: SubscriptionPlanIds): id is PaidSubscriptionPlanIds {
-	return orderedPaidPlans.includes(id as PaidSubscriptionPlanIds);
+export function isSubscriptionPaidPlan(_id: SubscriptionPlanIds): _id is PaidSubscriptionPlanIds {
+	return true;
 }
 
 export function isSubscriptionExpired(subscription: Optional<Subscription, 'state'>): boolean {
@@ -231,12 +180,8 @@ export function isSubscriptionExpired(subscription: Optional<Subscription, 'stat
 	return remaining != null && remaining <= 0;
 }
 
-export function isSubscriptionTrial(subscription: Optional<Subscription, 'state'>): boolean {
-	if (subscription.state != null) {
-		return subscription.state === SubscriptionState.Trial;
-	}
-
-	return subscription.plan.actual.id !== subscription.plan.effective.id;
+export function isSubscriptionTrial(_subscription: Optional<Subscription, 'state'>): boolean {
+	return false;
 }
 
 export function isSubscriptionTrialOrPaidFromState(state: SubscriptionState | undefined): boolean {
@@ -252,8 +197,8 @@ export function getCommunitySubscription(subscription?: Subscription): Subscript
 		...subscription,
 		plan: {
 			actual: getSubscriptionPlan(
-				'community',
-				false,
+				'enterprise',
+				true,
 				0,
 				undefined,
 				subscription?.plan?.actual?.startedOn != null
@@ -261,8 +206,8 @@ export function getCommunitySubscription(subscription?: Subscription): Subscript
 					: undefined,
 			),
 			effective: getSubscriptionPlan(
-				'community',
-				false,
+				'enterprise',
+				true,
 				0,
 				undefined,
 				subscription?.plan?.actual?.startedOn != null
@@ -270,8 +215,14 @@ export function getCommunitySubscription(subscription?: Subscription): Subscript
 					: undefined,
 			),
 		},
-		account: undefined,
+		account: {
+			id: 'gitlens-hacked',
+			name: 'GitLens Pro User',
+			email: 'pro@gitlens.hack',
+			verified: true,
+			createdOn: new Date().toISOString(),
+		},
 		activeOrganization: undefined,
-		state: SubscriptionState.Community,
+		state: SubscriptionState.Paid,
 	};
 }
